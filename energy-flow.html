@@ -1,0 +1,804 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EV Solar Charger - Energy Flow</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #081420 0%, #0a1a28 100%);
+            color: #f4f9ff;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 40px;
+            padding: 20px;
+            background: rgba(14, 32, 48, 0.5);
+            border-radius: 20px;
+            border: 1px solid #1d4a6a;
+        }
+
+        .header h1 {
+            font-size: 32px;
+            font-weight: 800;
+        }
+
+        .status-badge {
+            padding: 10px 16px;
+            border-radius: 20px;
+            background: #0d2a1f;
+            border: 1.5px solid #1ac0a8;
+            font-weight: 700;
+            color: #7af5b7;
+        }
+
+        /* ENERGY FLOW DIAGRAM */
+        .energy-flow {
+            background: rgba(14, 32, 48, 0.3);
+            border: 1px solid #1d4a6a;
+            border-radius: 24px;
+            padding: 40px;
+            margin-bottom: 40px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .energy-flow-title {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 30px;
+            color: #a9bfd0;
+            text-transform: uppercase;
+            letter-spacing: 1.2px;
+        }
+
+        .flow-diagram {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            gap: 20px;
+            position: relative;
+            min-height: 300px;
+        }
+
+        /* Device Box */
+        .device {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+            flex: 1;
+            max-width: 140px;
+        }
+
+        .device-icon {
+            width: 100px;
+            height: 100px;
+            background: linear-gradient(135deg, #0e2030 0%, #0a1420 100%);
+            border: 2px solid #1d4a6a;
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 48px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .device-icon::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(26, 192, 168, 0.3), transparent);
+            animation: shine 3s infinite;
+        }
+
+        @keyframes shine {
+            0% { left: -100%; }
+            100% { left: 100%; }
+        }
+
+        .device-icon.generating {
+            border-color: #ffbd59;
+            box-shadow: 0 0 20px rgba(255, 189, 89, 0.3);
+        }
+
+        .device-icon.consuming {
+            border-color: #7af5b7;
+            box-shadow: 0 0 20px rgba(122, 245, 183, 0.3);
+        }
+
+        .device-icon.storing {
+            border-color: #00e5ff;
+            box-shadow: 0 0 20px rgba(0, 229, 255, 0.3);
+        }
+
+        .device-label {
+            font-size: 13px;
+            font-weight: 600;
+            color: #d8e5f0;
+            text-align: center;
+        }
+
+        .device-value {
+            font-size: 20px;
+            font-weight: 800;
+        }
+
+        .device-value.solar { color: #ffbd59; }
+        .device-value.house { color: #7c9cff; }
+        .device-value.charger { color: #7af5b7; }
+        .device-value.battery { color: #00e5ff; }
+
+        .device-unit {
+            font-size: 11px;
+            opacity: 0.7;
+        }
+
+        .device-status {
+            font-size: 11px;
+            color: #7fa5c7;
+            font-weight: 500;
+        }
+
+        /* ENERGY FLOWS - Lines and Arrows */
+        .flows-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+
+        svg {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+
+        .flow-line {
+            stroke: #1ac0a8;
+            stroke-width: 2;
+            fill: none;
+            stroke-dasharray: 10, 5;
+            animation: flowMove 1.5s linear infinite;
+        }
+
+        @keyframes flowMove {
+            0% { stroke-dashoffset: 0; }
+            100% { stroke-dashoffset: 15; }
+        }
+
+        .flow-line.active {
+            stroke: #1ac0a8;
+            stroke-width: 3;
+            filter: drop-shadow(0 0 8px rgba(26, 192, 168, 0.6));
+        }
+
+        .flow-line.inactive {
+            stroke: #1a3a52;
+            stroke-width: 2;
+            opacity: 0.3;
+        }
+
+        /* Arrow markers */
+        defs marker {
+            overflow: visible;
+        }
+
+        .arrow-active {
+            fill: #1ac0a8;
+            filter: drop-shadow(0 0 4px rgba(26, 192, 168, 0.6));
+        }
+
+        .arrow-inactive {
+            fill: #1a3a52;
+        }
+
+        /* ENERGY DISTRIBUTION GRID */
+        .distribution-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-top: 40px;
+        }
+
+        .energy-card {
+            background: rgba(14, 32, 48, 0.4);
+            border: 1px solid #1d4a6a;
+            border-radius: 16px;
+            padding: 20px;
+        }
+
+        .energy-card-title {
+            font-size: 13px;
+            color: #a9bfd0;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 12px;
+            font-weight: 600;
+        }
+
+        .energy-flow-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 8px 0;
+            border-bottom: 1px solid #0a1420;
+        }
+
+        .energy-flow-item:last-child {
+            border-bottom: none;
+        }
+
+        .flow-icon {
+            font-size: 20px;
+        }
+
+        .flow-info {
+            flex: 1;
+        }
+
+        .flow-label {
+            font-size: 12px;
+            color: #7fa5c7;
+        }
+
+        .flow-value {
+            font-size: 16px;
+            font-weight: 700;
+            color: #ffffff;
+            margin-top: 2px;
+        }
+
+        .flow-bar {
+            width: 100%;
+            height: 4px;
+            background: #0a1420;
+            border-radius: 2px;
+            overflow: hidden;
+            margin-top: 4px;
+        }
+
+        .flow-bar-fill {
+            height: 100%;
+            background: #1ac0a8;
+            border-radius: 2px;
+            transition: width 0.5s ease;
+        }
+
+        .flow-bar-fill.low {
+            background: #ffbd59;
+        }
+
+        .flow-bar-fill.high {
+            background: #7af5b7;
+        }
+
+        /* REAL-TIME STATS */
+        .stats-panel {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-top: 40px;
+        }
+
+        .stat-box {
+            background: rgba(14, 32, 48, 0.4);
+            border: 1px solid #1d4a6a;
+            border-radius: 16px;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .stat-box-title {
+            font-size: 11px;
+            color: #a9bfd0;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+
+        .stat-box-value {
+            font-size: 28px;
+            font-weight: 800;
+            color: #1ac0a8;
+            margin-bottom: 4px;
+        }
+
+        .stat-box-sub {
+            font-size: 11px;
+            color: #7fa5c7;
+        }
+
+        /* ANIMATION KEYFRAMES */
+        @keyframes pulse-glow {
+            0%, 100% { 
+                box-shadow: 0 0 20px rgba(26, 192, 168, 0.3);
+            }
+            50% { 
+                box-shadow: 0 0 40px rgba(26, 192, 168, 0.6);
+            }
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-5px); }
+        }
+
+        .active-device {
+            animation: pulse-glow 2s infinite;
+        }
+
+        .energy-packet {
+            width: 10px;
+            height: 10px;
+            background: #1ac0a8;
+            border-radius: 50%;
+            filter: drop-shadow(0 0 6px rgba(26, 192, 168, 0.8));
+            position: absolute;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .header {
+                flex-direction: column;
+                gap: 16px;
+                text-align: center;
+            }
+
+            .flow-diagram {
+                flex-direction: column;
+                gap: 30px;
+            }
+
+            .device {
+                max-width: 100%;
+            }
+
+            .distribution-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Control Panel */
+        .control-panel {
+            background: rgba(14, 32, 48, 0.4);
+            border: 1px solid #1d4a6a;
+            border-radius: 16px;
+            padding: 20px;
+            margin-top: 40px;
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .control-btn {
+            padding: 10px 16px;
+            border-radius: 8px;
+            border: none;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 12px;
+        }
+
+        .control-btn.active {
+            background: #1ac0a8;
+            color: #081420;
+        }
+
+        .control-btn.inactive {
+            background: #0a1420;
+            border: 1px solid #1a3a52;
+            color: #7af5b7;
+        }
+
+        .control-btn:hover {
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>⚡ Energy Flow Visualization</h1>
+            <div class="status-badge">🟢 Live</div>
+        </div>
+
+        <!-- Energy Flow Diagram -->
+        <div class="energy-flow">
+            <div class="energy-flow-title">Real-Time Energy Distribution</div>
+            
+            <div class="flows-container">
+                <svg id="energyFlowSVG">
+                    <defs>
+                        <marker id="arrowActive" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+                            <path d="M0,0 L0,6 L9,3 z" class="arrow-active"/>
+                        </marker>
+                        <marker id="arrowInactive" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+                            <path d="M0,0 L0,6 L9,3 z" class="arrow-inactive"/>
+                        </marker>
+                    </defs>
+                    <!-- Lines will be drawn by JavaScript -->
+                </svg>
+            </div>
+
+            <div class="flow-diagram">
+                <!-- Solar Panel -->
+                <div class="device">
+                    <div class="device-icon generating">☀️</div>
+                    <div class="device-label">Solar Panel</div>
+                    <div class="device-value solar" id="solarValue">3.8</div>
+                    <div class="device-unit">kW</div>
+                    <div class="device-status">Generating</div>
+                </div>
+
+                <!-- House -->
+                <div class="device">
+                    <div class="device-icon consuming">🏠</div>
+                    <div class="device-label">House</div>
+                    <div class="device-value house" id="houseValue">2.1</div>
+                    <div class="device-unit">kW</div>
+                    <div class="device-status">Consuming</div>
+                </div>
+
+                <!-- EV Charger -->
+                <div class="device">
+                    <div class="device-icon consuming">🔌</div>
+                    <div class="device-label">EV Charger</div>
+                    <div class="device-value charger" id="chargerValue">2.3</div>
+                    <div class="device-unit">kW</div>
+                    <div class="device-status" id="chargerStatus">Charging</div>
+                </div>
+
+                <!-- Battery -->
+                <div class="device">
+                    <div class="device-icon storing">🔋</div>
+                    <div class="device-label">Battery</div>
+                    <div class="device-value battery" id="batteryValue">72</div>
+                    <div class="device-unit">%</div>
+                    <div class="device-status">Storing</div>
+                </div>
+
+                <!-- Grid -->
+                <div class="device">
+                    <div class="device-icon">🌍</div>
+                    <div class="device-label">Grid</div>
+                    <div class="device-value" style="color: #c01010;" id="gridValue">0.5</div>
+                    <div class="device-unit">kW</div>
+                    <div class="device-status">Export</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Energy Distribution Details -->
+        <div class="distribution-grid">
+            <!-- From Solar -->
+            <div class="energy-card">
+                <div class="energy-card-title">📤 Energy Sources</div>
+                <div class="energy-flow-item">
+                    <span class="flow-icon">☀️</span>
+                    <div class="flow-info">
+                        <div class="flow-label">Solar Generation</div>
+                        <div class="flow-value" style="color: #ffbd59;">3.8 kW</div>
+                        <div class="flow-bar">
+                            <div class="flow-bar-fill high" style="width: 76%;"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="energy-flow-item">
+                    <span class="flow-icon">🔋</span>
+                    <div class="flow-info">
+                        <div class="flow-label">Battery Discharge</div>
+                        <div class="flow-value" style="color: #00e5ff;">1.2 kW</div>
+                        <div class="flow-bar">
+                            <div class="flow-bar-fill" style="width: 24%;"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Distribution -->
+            <div class="energy-card">
+                <div class="energy-card-title">⚡ Active Flows</div>
+                <div class="energy-flow-item">
+                    <span class="flow-icon">→</span>
+                    <div class="flow-info">
+                        <div class="flow-label">To House</div>
+                        <div class="flow-value" style="color: #7c9cff;">2.1 kW</div>
+                        <div class="flow-bar">
+                            <div class="flow-bar-fill high" style="width: 42%;"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="energy-flow-item">
+                    <span class="flow-icon">→</span>
+                    <div class="flow-info">
+                        <div class="flow-label">To EV Charger</div>
+                        <div class="flow-value" style="color: #7af5b7;">2.3 kW</div>
+                        <div class="flow-bar">
+                            <div class="flow-bar-fill high" style="width: 46%;"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="energy-flow-item">
+                    <span class="flow-icon">→</span>
+                    <div class="flow-info">
+                        <div class="flow-label">To Grid</div>
+                        <div class="flow-value" style="color: #c01010;">0.5 kW</div>
+                        <div class="flow-bar">
+                            <div class="flow-bar-fill low" style="width: 10%;"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Battery Status -->
+            <div class="energy-card">
+                <div class="energy-card-title">🔋 Battery Status</div>
+                <div class="energy-flow-item">
+                    <span class="flow-icon">📊</span>
+                    <div class="flow-info">
+                        <div class="flow-label">Charge Level</div>
+                        <div class="flow-value" style="color: #00e5ff;">72%</div>
+                        <div class="flow-bar">
+                            <div class="flow-bar-fill" style="width: 72%; background: #00e5ff;"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="energy-flow-item">
+                    <span class="flow-icon">⚙️</span>
+                    <div class="flow-info">
+                        <div class="flow-label">Charging Rate</div>
+                        <div class="flow-value" style="color: #7af5b7;">↑ 1.2 kW</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Real-Time Stats -->
+        <div class="stats-panel">
+            <div class="stat-box">
+                <div class="stat-box-title">Total Generation</div>
+                <div class="stat-box-value">3.8 kW</div>
+                <div class="stat-box-sub">18.6 kWh today</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-box-title">Total Consumption</div>
+                <div class="stat-box-value">4.4 kW</div>
+                <div class="stat-box-sub">House + Charger</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-box-title">Self-Consumption</div>
+                <div class="stat-box-value">87.5%</div>
+                <div class="stat-box-sub">Very efficient</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-box-title">Energy Surplus</div>
+                <div class="stat-box-value">0.5 kW</div>
+                <div class="stat-box-sub">Exported to grid</div>
+            </div>
+        </div>
+
+        <!-- Control Panel -->
+        <div class="control-panel">
+            <button class="control-btn active" onclick="toggleSimulation()">⏸ Pause Simulation</button>
+            <button class="control-btn inactive" onclick="setScenario('sunny')">☀️ Sunny</button>
+            <button class="control-btn inactive" onclick="setScenario('cloudy')">☁️ Cloudy</button>
+            <button class="control-btn inactive" onclick="setScenario('night')">🌙 Night</button>
+            <button class="control-btn inactive" onclick="resetData()">🔄 Reset</button>
+        </div>
+    </div>
+
+    <script>
+        // Data state
+        let state = {
+            isRunning: true,
+            solar: 3.8,
+            house: 2.1,
+            charger: 2.3,
+            battery: 72,
+            grid: 0.5,
+            scenario: 'normal'
+        };
+
+        // Initialize SVG
+        function initializeSVG() {
+            const svg = document.getElementById('energyFlowSVG');
+            const container = svg.parentElement;
+            const width = container.offsetWidth;
+            const height = container.offsetHeight;
+            
+            svg.setAttribute('width', width);
+            svg.setAttribute('height', height);
+            
+            drawEnergyFlows();
+        }
+
+        // Draw energy flow lines
+        function drawEnergyFlows() {
+            const svg = document.getElementById('energyFlowSVG');
+            const existingLines = svg.querySelectorAll('line, path');
+            existingLines.forEach(line => line.remove());
+
+            const width = svg.offsetWidth;
+            const height = svg.offsetHeight;
+            const centerY = height / 2;
+
+            // Calculate positions (5 devices)
+            const positions = [
+                { x: width * 0.1, y: centerY, name: 'solar' },      // Solar
+                { x: width * 0.3, y: centerY, name: 'house' },      // House
+                { x: width * 0.5, y: centerY, name: 'charger' },    // Charger
+                { x: width * 0.7, y: centerY, name: 'battery' },    // Battery
+                { x: width * 0.9, y: centerY, name: 'grid' }        // Grid
+            ];
+
+            // Helper function to create line
+            function createLine(x1, y1, x2, y2, isActive, marker) {
+                const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                line.setAttribute('x1', x1);
+                line.setAttribute('y1', y1);
+                line.setAttribute('x2', x2);
+                line.setAttribute('y2', y2);
+                line.setAttribute('class', isActive ? 'flow-line active' : 'flow-line inactive');
+                if (isActive) {
+                    line.setAttribute('marker-end', `url(#${marker})`);
+                }
+                svg.appendChild(line);
+            }
+
+            // Solar to House
+            if (state.house > 0) {
+                createLine(positions[0].x + 50, positions[0].y, positions[1].x - 50, positions[1].y, true, 'arrowActive');
+            }
+
+            // Solar to Charger
+            if (state.charger > 0) {
+                const mid = (positions[0].x + positions[2].x) / 2;
+                const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                line.setAttribute('x1', positions[0].x + 50);
+                line.setAttribute('y1', positions[0].y - 30);
+                line.setAttribute('x2', positions[2].x - 50);
+                line.setAttribute('y2', positions[2].y - 30);
+                line.setAttribute('class', 'flow-line active');
+                line.setAttribute('marker-end', 'url(#arrowActive)');
+                svg.appendChild(line);
+            }
+
+            // Solar to Battery
+            if (state.battery < 100) {
+                const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                line.setAttribute('x1', positions[0].x + 50);
+                line.setAttribute('y1', positions[0].y + 30);
+                line.setAttribute('x2', positions[3].x - 50);
+                line.setAttribute('y2', positions[3].y + 30);
+                line.setAttribute('class', 'flow-line active');
+                line.setAttribute('marker-end', 'url(#arrowActive)');
+                svg.appendChild(line);
+            }
+
+            // Solar to Grid (surplus)
+            if (state.grid > 0) {
+                createLine(positions[0].x + 50, positions[0].y + 60, positions[4].x - 50, positions[4].y, true, 'arrowActive');
+            }
+        }
+
+        // Update display values
+        function updateDisplay() {
+            document.getElementById('solarValue').textContent = state.solar.toFixed(1);
+            document.getElementById('houseValue').textContent = state.house.toFixed(1);
+            document.getElementById('chargerValue').textContent = state.charger.toFixed(1);
+            document.getElementById('batteryValue').textContent = state.battery.toFixed(0);
+            document.getElementById('gridValue').textContent = state.grid.toFixed(1);
+
+            // Update SVG
+            drawEnergyFlows();
+        }
+
+        // Simulate energy flow changes
+        function simulateEnergyFlow() {
+            if (!state.isRunning) return;
+
+            // Random variations based on scenario
+            const variation = {
+                sunny: { solar: 0.3, house: 0.1, charger: 0.2 },
+                cloudy: { solar: 0.1, house: 0.05, charger: 0.15 },
+                night: { solar: 0, house: 0.2, charger: 0 }
+            };
+
+            const v = variation[state.scenario] || variation.sunny;
+
+            // Solar generation (between 0 and max)
+            state.solar = Math.max(0, state.solar + (Math.random() - 0.5) * v.solar);
+            state.solar = Math.min(5, state.solar);
+
+            // House consumption (stable)
+            state.house = 2.0 + (Math.random() - 0.5) * v.house;
+
+            // EV Charger (depends on solar)
+            if (state.solar > 1) {
+                state.charger = Math.min(7.4, state.solar - state.house);
+            } else {
+                state.charger = 0;
+            }
+
+            // Battery charging
+            if (state.solar > state.house + state.charger) {
+                state.battery = Math.min(100, state.battery + 0.5);
+            } else if (state.charger === 0 && state.house > state.solar) {
+                state.battery = Math.max(0, state.battery - 0.3);
+            }
+
+            // Grid export/import
+            const total = state.house + state.charger;
+            state.grid = Math.max(0, state.solar - total);
+
+            updateDisplay();
+        }
+
+        // Control functions
+        function toggleSimulation() {
+            state.isRunning = !state.isRunning;
+            const btn = event.target;
+            btn.textContent = state.isRunning ? '⏸ Pause Simulation' : '▶ Play Simulation';
+            btn.classList.toggle('active');
+        }
+
+        function setScenario(scenario) {
+            state.scenario = scenario;
+            document.querySelectorAll('.control-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+        }
+
+        function resetData() {
+            state = {
+                isRunning: true,
+                solar: 3.8,
+                house: 2.1,
+                charger: 2.3,
+                battery: 72,
+                grid: 0.5,
+                scenario: 'normal'
+            };
+            updateDisplay();
+        }
+
+        // Animation loop
+        setInterval(() => {
+            simulateEnergyFlow();
+        }, 2000);
+
+        // Initialize
+        window.addEventListener('load', initializeSVG);
+        window.addEventListener('resize', initializeSVG);
+        updateDisplay();
+    </script>
+</body>
+</html>

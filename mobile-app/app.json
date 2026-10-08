@@ -4,17 +4,41 @@
     "slug": "ev-solar-charger",
     "version": "1.0.0",
     "orientation": "portrait",
-    "userInterfaceStyle": "automatic",
+    "userInterfaceStyle": "dark",
     "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
       "backgroundColor": "#081420"
     },
+    "icon": "./assets/icon.png",
     "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTabletMode": true,
+      "bundleIdentifier": "com.evsolarcharger.app"
+    },
     "android": {
-      "package": "com.evsolarcharger.app",
       "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#081420"
-      }
-    }
+      },
+      "package": "com.evsolarcharger.app",
+      "permissions": [
+        "INTERNET",
+        "CHANGE_NETWORK_STATE",
+        "ACCESS_NETWORK_STATE"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Allow $(PRODUCT_NAME) to access your location."
+        }
+      ]
+    ]
   },
   "name": "EV Solar Charger",
   "displayName": "EV Solar Charger"

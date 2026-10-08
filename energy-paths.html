@@ -1,0 +1,986 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EV Solar Charger - Energy Paths</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #081420 0%, #0a1a28 100%);
+            color: #f4f9ff;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: rgba(14, 32, 48, 0.5);
+            border-radius: 20px;
+            border: 1px solid #1d4a6a;
+        }
+
+        .header h1 {
+            font-size: 32px;
+            font-weight: 800;
+        }
+
+        .status-badge {
+            padding: 10px 16px;
+            border-radius: 20px;
+            background: #0d2a1f;
+            border: 1.5px solid #1ac0a8;
+            font-weight: 700;
+            color: #7af5b7;
+        }
+
+        /* Main energy flow container */
+        .energy-flows-main {
+            background: rgba(14, 32, 48, 0.3);
+            border: 1px solid #1d4a6a;
+            border-radius: 24px;
+            padding: 30px;
+            margin-bottom: 30px;
+            position: relative;
+        }
+
+        .energy-flows-title {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 25px;
+            color: #a9bfd0;
+            text-transform: uppercase;
+            letter-spacing: 1.2px;
+        }
+
+        /* SVG Canvas */
+        .canvas-wrapper {
+            position: relative;
+            width: 100%;
+            height: 500px;
+            background: rgba(10, 26, 40, 0.3);
+            border-radius: 16px;
+            border: 1px solid #1a3a52;
+            overflow: hidden;
+            margin-bottom: 25px;
+        }
+
+        svg {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        /* Device styles */
+        .device-node {
+            position: absolute;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .device-circle {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 36px;
+            border: 3px solid #1d4a6a;
+            background: linear-gradient(135deg, #0e2030 0%, #0a1420 100%);
+            position: relative;
+            box-shadow: 0 0 20px rgba(26, 192, 168, 0.2);
+            transition: all 0.3s ease;
+        }
+
+        .device-circle.active {
+            box-shadow: 0 0 40px rgba(26, 192, 168, 0.6);
+            border-color: #1ac0a8;
+            transform: scale(1.1);
+        }
+
+        .device-circle::before {
+            content: '';
+            position: absolute;
+            top: -8px;
+            left: -8px;
+            right: -8px;
+            bottom: -8px;
+            border-radius: 50%;
+            border: 2px solid transparent;
+            animation: pulse-ring 2s infinite;
+        }
+
+        .device-circle.active::before {
+            border-color: #1ac0a8;
+            animation: pulse-ring 1s infinite;
+        }
+
+        @keyframes pulse-ring {
+            0% {
+                transform: scale(1);
+                opacity: 1;
+            }
+            100% {
+                transform: scale(1.3);
+                opacity: 0;
+            }
+        }
+
+        .device-label {
+            font-size: 12px;
+            font-weight: 600;
+            color: #d8e5f0;
+            text-align: center;
+            width: 100%;
+        }
+
+        .device-value {
+            font-size: 14px;
+            font-weight: 800;
+            text-align: center;
+        }
+
+        .device-value.solar { color: #ffbd59; }
+        .device-value.house { color: #7c9cff; }
+        .device-value.charger { color: #7af5b7; }
+        .device-value.battery { color: #00e5ff; }
+        .device-value.grid { color: #c01010; }
+
+        /* Energy flow paths */
+        .energy-path {
+            stroke-dasharray: 10, 5;
+            animation: flowAnimation 1.5s linear infinite;
+            fill: none;
+            stroke-width: 3;
+            filter: drop-shadow(0 0 8px rgba(26, 192, 168, 0.6));
+        }
+
+        @keyframes flowAnimation {
+            0% { stroke-dashoffset: 0; }
+            100% { stroke-dashoffset: 15; }
+        }
+
+        .path-solar-to-house {
+            stroke: #ffbd59;
+            opacity: 0.7;
+        }
+
+        .path-solar-to-charger {
+            stroke: #1ac0a8;
+            opacity: 0.7;
+        }
+
+        .path-solar-to-battery {
+            stroke: #00e5ff;
+            opacity: 0.7;
+        }
+
+        .path-solar-to-grid {
+            stroke: #c01010;
+            opacity: 0.7;
+        }
+
+        .path-battery-to-house {
+            stroke: #00e5ff;
+            opacity: 0.7;
+        }
+
+        .path-battery-to-charger {
+            stroke: #00e5ff;
+            opacity: 0.7;
+        }
+
+        .path-grid-to-house {
+            stroke: #c01010;
+            opacity: 0.7;
+        }
+
+        /* Flow energy packets */
+        circle.energy-packet {
+            fill: #1ac0a8;
+            filter: drop-shadow(0 0 6px rgba(26, 192, 168, 0.8));
+        }
+
+        /* Energy paths legend */
+        .legend {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            padding: 20px;
+            background: rgba(10, 26, 40, 0.3);
+            border-radius: 16px;
+            border: 1px solid #1a3a52;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px;
+            background: rgba(14, 32, 48, 0.4);
+            border-radius: 8px;
+            border-left: 3px solid;
+        }
+
+        .legend-item.solar-to-house {
+            border-left-color: #ffbd59;
+        }
+
+        .legend-item.solar-to-charger {
+            border-left-color: #1ac0a8;
+        }
+
+        .legend-item.solar-to-battery {
+            border-left-color: #00e5ff;
+        }
+
+        .legend-item.solar-to-grid {
+            border-left-color: #c01010;
+        }
+
+        .legend-item.battery-to-house {
+            border-left-color: #00e5ff;
+        }
+
+        .legend-item.battery-to-charger {
+            border-left-color: #00e5ff;
+        }
+
+        .legend-item.grid-to-house {
+            border-left-color: #c01010;
+        }
+
+        .legend-icon {
+            font-size: 18px;
+        }
+
+        .legend-info {
+            flex: 1;
+        }
+
+        .legend-label {
+            font-size: 12px;
+            color: #a9bfd0;
+            font-weight: 600;
+        }
+
+        .legend-value {
+            font-size: 14px;
+            font-weight: 800;
+            color: #ffffff;
+            margin-top: 2px;
+        }
+
+        .legend-status {
+            font-size: 11px;
+            color: #7fa5c7;
+            margin-top: 2px;
+        }
+
+        /* Flow details */
+        .flow-details {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 30px;
+        }
+
+        .detail-card {
+            background: rgba(14, 32, 48, 0.4);
+            border: 1px solid #1d4a6a;
+            border-radius: 16px;
+            padding: 20px;
+        }
+
+        .detail-title {
+            font-size: 13px;
+            color: #a9bfd0;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 15px;
+            font-weight: 600;
+        }
+
+        .flow-path-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px;
+            background: rgba(10, 20, 32, 0.5);
+            border-radius: 8px;
+            margin-bottom: 10px;
+            border-left: 3px solid #1ac0a8;
+        }
+
+        .flow-path-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .flow-path-item.inactive {
+            opacity: 0.4;
+            border-left-color: #1a3a52;
+        }
+
+        .flow-arrow {
+            font-size: 18px;
+            animation: bounce 1s infinite;
+        }
+
+        .flow-path-item.inactive .flow-arrow {
+            animation: none;
+            opacity: 0.3;
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateX(0); }
+            50% { transform: translateX(5px); }
+        }
+
+        .flow-path-label {
+            flex: 1;
+            font-size: 12px;
+            color: #d8e5f0;
+        }
+
+        .flow-path-value {
+            font-size: 14px;
+            font-weight: 800;
+            color: #1ac0a8;
+            min-width: 60px;
+            text-align: right;
+        }
+
+        .flow-path-value.orange { color: #ffbd59; }
+        .flow-path-value.cyan { color: #00e5ff; }
+        .flow-path-value.red { color: #c01010; }
+        .flow-path-value.green { color: #7af5b7; }
+
+        /* Energy balance */
+        .energy-balance {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .balance-card {
+            background: rgba(10, 20, 32, 0.5);
+            border: 1px solid #1a3a52;
+            border-radius: 8px;
+            padding: 12px;
+            text-align: center;
+        }
+
+        .balance-label {
+            font-size: 11px;
+            color: #7fa5c7;
+            margin-bottom: 6px;
+        }
+
+        .balance-value {
+            font-size: 18px;
+            font-weight: 800;
+            color: #1ac0a8;
+        }
+
+        .balance-sub {
+            font-size: 10px;
+            color: #7fa5c7;
+            margin-top: 4px;
+        }
+
+        /* Status indicator */
+        .status-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #1ac0a8;
+            animation: blink 1s infinite;
+            margin-right: 6px;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .status-indicator.offline {
+            background: #c01010;
+            animation: none;
+            opacity: 0.3;
+        }
+
+        /* Controls */
+        .controls {
+            display: flex;
+            gap: 12px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+
+        .control-btn {
+            padding: 10px 16px;
+            border-radius: 8px;
+            border: none;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 12px;
+        }
+
+        .control-btn.active {
+            background: #1ac0a8;
+            color: #081420;
+        }
+
+        .control-btn.inactive {
+            background: #0a1420;
+            border: 1px solid #1a3a52;
+            color: #7af5b7;
+        }
+
+        .control-btn:hover {
+            transform: translateY(-2px);
+        }
+
+        @media (max-width: 768px) {
+            .canvas-wrapper {
+                height: 600px;
+            }
+
+            .header {
+                flex-direction: column;
+                gap: 16px;
+                text-align: center;
+            }
+
+            .flow-details {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>⚡ Energy Flow Paths (Real-Time)</h1>
+            <div class="status-badge">🟢 Live</div>
+        </div>
+
+        <!-- Main energy flow visualization -->
+        <div class="energy-flows-main">
+            <div class="energy-flows-title">Current Energy Paths & Distribution</div>
+
+            <div class="canvas-wrapper">
+                <svg id="energyFlowCanvas">
+                    <defs>
+                        <marker id="arrowHead" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+                            <path d="M0,0 L0,6 L9,3 z" fill="#1ac0a8"/>
+                        </marker>
+                    </defs>
+                </svg>
+
+                <!-- Device nodes (positioned with absolute) -->
+                <div class="device-node" id="node-solar" style="left: 5%; top: 50%; transform: translate(-50%, -50%);">
+                    <div class="device-circle active">☀️</div>
+                    <div class="device-label">Solar<br>Panel</div>
+                    <div class="device-value solar" id="val-solar">3.8 kW</div>
+                </div>
+
+                <div class="device-node" id="node-house" style="left: 25%; top: 20%;">
+                    <div class="device-circle">🏠</div>
+                    <div class="device-label">House</div>
+                    <div class="device-value house" id="val-house">2.1 kW</div>
+                </div>
+
+                <div class="device-node" id="node-charger" style="left: 50%; top: 50%; transform: translate(-50%, -50%);">
+                    <div class="device-circle">🔌</div>
+                    <div class="device-label">EV<br>Charger</div>
+                    <div class="device-value charger" id="val-charger">2.3 kW</div>
+                </div>
+
+                <div class="device-node" id="node-battery" style="left: 75%; top: 80%;">
+                    <div class="device-circle">🔋</div>
+                    <div class="device-label">Battery</div>
+                    <div class="device-value battery" id="val-battery">72%</div>
+                </div>
+
+                <div class="device-node" id="node-grid" style="right: 5%; top: 50%; transform: translate(50%, -50%);">
+                    <div class="device-circle">🌍</div>
+                    <div class="device-label">Grid</div>
+                    <div class="device-value grid" id="val-grid">0.5 kW</div>
+                </div>
+            </div>
+
+            <!-- Legend -->
+            <div class="legend">
+                <div class="legend-item solar-to-house">
+                    <span class="legend-icon">☀️→🏠</span>
+                    <div class="legend-info">
+                        <div class="legend-label">Solar to House</div>
+                        <div class="legend-value" id="flow-solar-to-house">2.1 kW</div>
+                        <div class="legend-status">Primary source</div>
+                    </div>
+                </div>
+
+                <div class="legend-item solar-to-charger">
+                    <span class="legend-icon">☀️→🔌</span>
+                    <div class="legend-info">
+                        <div class="legend-label">Solar to EV Charger</div>
+                        <div class="legend-value" id="flow-solar-to-charger">2.3 kW</div>
+                        <div class="legend-status">Active charging</div>
+                    </div>
+                </div>
+
+                <div class="legend-item solar-to-battery">
+                    <span class="legend-icon">☀️→🔋</span>
+                    <div class="legend-info">
+                        <div class="legend-label">Solar to Battery</div>
+                        <div class="legend-value" id="flow-solar-to-battery">0.0 kW</div>
+                        <div class="legend-status">Idle (surplus only)</div>
+                    </div>
+                </div>
+
+                <div class="legend-item solar-to-grid">
+                    <span class="legend-icon">☀️→🌍</span>
+                    <div class="legend-info">
+                        <div class="legend-label">Solar to Grid</div>
+                        <div class="legend-value" id="flow-solar-to-grid">0.5 kW</div>
+                        <div class="legend-status">Excess export</div>
+                    </div>
+                </div>
+
+                <div class="legend-item battery-to-house">
+                    <span class="legend-icon">🔋→🏠</span>
+                    <div class="legend-info">
+                        <div class="legend-label">Battery to House</div>
+                        <div class="legend-value" id="flow-battery-to-house">0.0 kW</div>
+                        <div class="legend-status">Idle (not needed)</div>
+                    </div>
+                </div>
+
+                <div class="legend-item grid-to-house">
+                    <span class="legend-icon">🌍→🏠</span>
+                    <div class="legend-info">
+                        <div class="legend-label">Grid to House</div>
+                        <div class="legend-value" id="flow-grid-to-house">0.0 kW</div>
+                        <div class="legend-status">Idle (not needed)</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Flow Details -->
+        <div class="flow-details">
+            <!-- Energy Sources -->
+            <div class="detail-card">
+                <div class="detail-title">📤 Energy Sources</div>
+                <div class="flow-path-item">
+                    <span class="flow-arrow">→</span>
+                    <div class="flow-path-label">☀️ Solar Panel (Generating)</div>
+                    <div class="flow-path-value orange" id="source-solar">3.8 kW</div>
+                </div>
+                <div class="flow-path-item inactive">
+                    <span class="flow-arrow">→</span>
+                    <div class="flow-path-label">🔋 Battery (Discharging)</div>
+                    <div class="flow-path-value cyan" id="source-battery">0.0 kW</div>
+                </div>
+                <div class="flow-path-item inactive">
+                    <span class="flow-arrow">→</span>
+                    <div class="flow-path-label">🌍 Grid (Import)</div>
+                    <div class="flow-path-value red" id="source-grid">0.0 kW</div>
+                </div>
+
+                <div class="energy-balance">
+                    <div class="balance-card">
+                        <div class="balance-label">Total Supply</div>
+                        <div class="balance-value" id="total-supply">3.8 kW</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Energy Consumers -->
+            <div class="detail-card">
+                <div class="detail-title">📥 Energy Consumers</div>
+                <div class="flow-path-item">
+                    <span class="flow-arrow">→</span>
+                    <div class="flow-path-label">🏠 House (Consuming)</div>
+                    <div class="flow-path-value green" id="load-house">2.1 kW</div>
+                </div>
+                <div class="flow-path-item">
+                    <span class="flow-arrow">→</span>
+                    <div class="flow-path-label">🔌 EV Charger (Charging)</div>
+                    <div class="flow-path-value green" id="load-charger">2.3 kW</div>
+                </div>
+                <div class="flow-path-item inactive">
+                    <span class="flow-arrow">→</span>
+                    <div class="flow-path-label">🔋 Battery (Charging)</div>
+                    <div class="flow-path-value cyan" id="load-battery">0.0 kW</div>
+                </div>
+
+                <div class="energy-balance">
+                    <div class="balance-card">
+                        <div class="balance-label">Total Load</div>
+                        <div class="balance-value" id="total-load">4.4 kW</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Energy Distribution -->
+            <div class="detail-card">
+                <div class="detail-title">⚡ Energy Distribution</div>
+                <div class="flow-path-item">
+                    <span class="flow-arrow">✓</span>
+                    <div class="flow-path-label">Self-Consumption</div>
+                    <div class="flow-path-value green" id="self-consumption">87.5%</div>
+                </div>
+                <div class="flow-path-item">
+                    <span class="flow-arrow">✓</span>
+                    <div class="flow-path-label">Export to Grid</div>
+                    <div class="flow-path-value red" id="export-grid">0.5 kW</div>
+                </div>
+                <div class="flow-path-item">
+                    <span class="flow-arrow">✓</span>
+                    <div class="flow-path-label">Battery Level</div>
+                    <div class="flow-path-value cyan" id="battery-level">72%</div>
+                </div>
+
+                <div class="energy-balance">
+                    <div class="balance-card">
+                        <div class="balance-label">Efficiency</div>
+                        <div class="balance-value" id="efficiency">94.2%</div>
+                        <div class="balance-sub">Very Good</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Controls -->
+        <div class="controls" style="margin-top: 30px;">
+            <button class="control-btn active" onclick="toggleSimulation()">⏸ Pause</button>
+            <button class="control-btn inactive" onclick="setScenario('sunny')">☀️ Sunny</button>
+            <button class="control-btn inactive" onclick="setScenario('cloudy')">☁️ Cloudy</button>
+            <button class="control-btn inactive" onclick="setScenario('evening')">🌅 Evening</button>
+            <button class="control-btn inactive" onclick="setScenario('night')">🌙 Night</button>
+            <button class="control-btn inactive" onclick="resetData()">🔄 Reset</button>
+        </div>
+    </div>
+
+    <script>
+        // Energy flow state
+        let energyState = {
+            isRunning: true,
+            scenario: 'normal',
+            sources: {
+                solar: 3.8,
+                battery: 0.0,
+                grid: 0.0
+            },
+            loads: {
+                house: 2.1,
+                charger: 2.3,
+                battery: 0.0
+            },
+            battery: {
+                level: 72,
+                charging: false
+            }
+        };
+
+        // SVG Canvas setup
+        const svg = document.getElementById('energyFlowCanvas');
+        const canvas = document.querySelector('.canvas-wrapper');
+
+        function initCanvas() {
+            const width = canvas.offsetWidth;
+            const height = canvas.offsetHeight;
+            svg.setAttribute('width', width);
+            svg.setAttribute('height', height);
+            drawEnergyPaths();
+        }
+
+        // Calculate device positions
+        function getDevicePosition(deviceId) {
+            const width = canvas.offsetWidth;
+            const height = canvas.offsetHeight;
+            const positions = {
+                solar: { x: width * 0.08, y: height * 0.5 },
+                house: { x: width * 0.25, y: height * 0.2 },
+                charger: { x: width * 0.5, y: height * 0.5 },
+                battery: { x: width * 0.75, y: height * 0.8 },
+                grid: { x: width * 0.92, y: height * 0.5 }
+            };
+            return positions[deviceId];
+        }
+
+        // Draw energy flow paths as curves
+        function drawEnergyPaths() {
+            // Remove existing paths
+            svg.querySelectorAll('path, line').forEach(el => el.remove());
+
+            const pathWidth = 3;
+            const pathFilter = 'drop-shadow(0 0 8px rgba(26, 192, 168, 0.6))';
+
+            // Helper to create curved path
+            function createCurvedPath(from, to, color, isActive) {
+                const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                
+                // Bezier curve
+                const controlX = (from.x + to.x) / 2;
+                const controlY = from.y + (to.y - from.y) / 2 - 80;
+                
+                const d = `M ${from.x} ${from.y} Q ${controlX} ${controlY} ${to.x} ${to.y}`;
+                
+                path.setAttribute('d', d);
+                path.setAttribute('stroke', color);
+                path.setAttribute('stroke-width', pathWidth);
+                path.setAttribute('fill', 'none');
+                
+                if (isActive) {
+                    path.setAttribute('class', 'energy-path');
+                    path.setAttribute('stroke-dasharray', '10, 5');
+                    path.setAttribute('filter', pathFilter);
+                    path.style.animation = 'flowAnimation 1.5s linear infinite';
+                } else {
+                    path.setAttribute('opacity', '0.2');
+                }
+                
+                svg.appendChild(path);
+            }
+
+            const solar = getDevicePosition('solar');
+            const house = getDevicePosition('house');
+            const charger = getDevicePosition('charger');
+            const battery = getDevicePosition('battery');
+            const grid = getDevicePosition('grid');
+
+            // Draw active paths based on energy distribution
+            const totalGeneration = energyState.sources.solar + energyState.sources.battery + energyState.sources.grid;
+
+            // Solar to House
+            if (energyState.loads.house > 0) {
+                const activeAmount = Math.min(energyState.sources.solar, energyState.loads.house);
+                createCurvedPath(solar, house, '#ffbd59', activeAmount > 0);
+            }
+
+            // Solar to Charger
+            if (energyState.loads.charger > 0) {
+                const activeAmount = Math.min(energyState.sources.solar - energyState.loads.house, energyState.loads.charger);
+                createCurvedPath(solar, charger, '#1ac0a8', activeAmount > 0);
+            }
+
+            // Solar to Battery
+            if (energyState.loads.battery > 0) {
+                createCurvedPath(solar, battery, '#00e5ff', energyState.loads.battery > 0);
+            }
+
+            // Solar to Grid (surplus)
+            if (energyState.sources.solar > energyState.loads.house + energyState.loads.charger) {
+                createCurvedPath(solar, grid, '#c01010', true);
+            }
+
+            // Battery to House (if needed)
+            if (energyState.sources.battery > 0 && energyState.loads.house > energyState.sources.solar) {
+                createCurvedPath(battery, house, '#00e5ff', true);
+            }
+
+            // Battery to Charger (if needed)
+            if (energyState.sources.battery > 0) {
+                createCurvedPath(battery, charger, '#00e5ff', true);
+            }
+
+            // Grid to House (if needed)
+            if (energyState.sources.grid > 0) {
+                createCurvedPath(grid, house, '#c01010', true);
+            }
+
+            // Add animated energy packets on active paths
+            drawEnergyPackets();
+        }
+
+        // Draw animated energy packets
+        function drawEnergyPackets() {
+            const packets = svg.querySelectorAll('path.energy-path');
+            
+            packets.forEach((path, index) => {
+                // Create animated circles moving along the path
+                const length = path.getTotalLength();
+                
+                for (let i = 0; i < 3; i++) {
+                    const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                    circle.setAttribute('r', '6');
+                    circle.setAttribute('class', 'energy-packet');
+                    circle.setAttribute('fill', path.getAttribute('stroke'));
+                    
+                    svg.appendChild(circle);
+                    
+                    // Animate along path
+                    animateAlongPath(circle, path, i * (length / 3));
+                }
+            });
+        }
+
+        function animateAlongPath(element, path, startOffset) {
+            const length = path.getTotalLength();
+            let offset = startOffset;
+            
+            function animate() {
+                offset = (offset + 2) % length;
+                const point = path.getPointAtLength(offset);
+                element.setAttribute('cx', point.x);
+                element.setAttribute('cy', point.y);
+                
+                if (energyState.isRunning) {
+                    requestAnimationFrame(animate);
+                }
+            }
+            
+            animate();
+        }
+
+        // Update display values
+        function updateDisplay() {
+            // Sources
+            document.getElementById('source-solar').textContent = energyState.sources.solar.toFixed(1) + ' kW';
+            document.getElementById('source-battery').textContent = energyState.sources.battery.toFixed(1) + ' kW';
+            document.getElementById('source-grid').textContent = energyState.sources.grid.toFixed(1) + ' kW';
+
+            // Loads
+            document.getElementById('load-house').textContent = energyState.loads.house.toFixed(1) + ' kW';
+            document.getElementById('load-charger').textContent = energyState.loads.charger.toFixed(1) + ' kW';
+            document.getElementById('load-battery').textContent = energyState.loads.battery.toFixed(1) + ' kW';
+
+            // Values in main canvas
+            document.getElementById('val-solar').textContent = energyState.sources.solar.toFixed(1) + ' kW';
+            document.getElementById('val-house').textContent = energyState.loads.house.toFixed(1) + ' kW';
+            document.getElementById('val-charger').textContent = energyState.loads.charger.toFixed(1) + ' kW';
+            document.getElementById('val-battery').textContent = energyState.battery.level.toFixed(0) + '%';
+            const grid = energyState.sources.solar - energyState.loads.house - energyState.loads.charger;
+            document.getElementById('val-grid').textContent = Math.max(0, grid).toFixed(1) + ' kW';
+
+            // Flow paths
+            const solarToHouse = Math.min(energyState.sources.solar, energyState.loads.house);
+            const solarToCharger = Math.min(energyState.sources.solar - energyState.loads.house, energyState.loads.charger);
+            const solarToBattery = Math.max(0, energyState.sources.solar - energyState.loads.house - energyState.loads.charger);
+            const solarToGrid = Math.max(0, energyState.sources.solar - energyState.loads.house - energyState.loads.charger);
+
+            document.getElementById('flow-solar-to-house').textContent = solarToHouse.toFixed(1) + ' kW';
+            document.getElementById('flow-solar-to-charger').textContent = solarToCharger.toFixed(1) + ' kW';
+            document.getElementById('flow-solar-to-battery').textContent = solarToBattery.toFixed(1) + ' kW';
+            document.getElementById('flow-solar-to-grid').textContent = solarToGrid.toFixed(1) + ' kW';
+
+            // Totals
+            const totalSupply = energyState.sources.solar + energyState.sources.battery + energyState.sources.grid;
+            const totalLoad = energyState.loads.house + energyState.loads.charger + energyState.loads.battery;
+            const selfConsumption = totalLoad > 0 ? (Math.min(totalSupply, totalLoad) / totalLoad * 100) : 0;
+
+            document.getElementById('total-supply').textContent = totalSupply.toFixed(1) + ' kW';
+            document.getElementById('total-load').textContent = totalLoad.toFixed(1) + ' kW';
+            document.getElementById('self-consumption').textContent = selfConsumption.toFixed(1) + '%';
+            document.getElementById('export-grid').textContent = solarToGrid.toFixed(1) + ' kW';
+            document.getElementById('battery-level').textContent = energyState.battery.level.toFixed(0) + '%';
+            document.getElementById('efficiency').textContent = '94.2%';
+
+            drawEnergyPaths();
+        }
+
+        // Simulate energy flow
+        function simulateEnergyFlow() {
+            if (!energyState.isRunning) return;
+
+            const scenarios = {
+                sunny: { solar: 4.5, variation: 0.3 },
+                cloudy: { solar: 1.5, variation: 0.2 },
+                evening: { solar: 0.8, variation: 0.1 },
+                night: { solar: 0.0, variation: 0 },
+                normal: { solar: 3.8, variation: 0.3 }
+            };
+
+            const scenario = scenarios[energyState.scenario] || scenarios.normal;
+            
+            // Solar generation with noise
+            energyState.sources.solar = Math.max(0, scenario.solar + (Math.random() - 0.5) * scenario.variation);
+            
+            // House load (fairly stable)
+            energyState.loads.house = 2.0 + (Math.random() - 0.5) * 0.2;
+            
+            // EV Charger (depends on solar surplus)
+            if (energyState.sources.solar > energyState.loads.house) {
+                energyState.loads.charger = Math.min(7.4, energyState.sources.solar - energyState.loads.house);
+            } else {
+                energyState.loads.charger = 0;
+            }
+
+            // Battery charging/discharging
+            const surplus = energyState.sources.solar - energyState.loads.house - energyState.loads.charger;
+            if (surplus > 0.5 && energyState.battery.level < 100) {
+                energyState.battery.charging = true;
+                energyState.loads.battery = Math.min(3.0, surplus);
+                energyState.battery.level = Math.min(100, energyState.battery.level + 0.3);
+            } else if (energyState.loads.house > energyState.sources.solar && energyState.battery.level > 10) {
+                energyState.battery.charging = false;
+                energyState.sources.battery = Math.min(3.0, energyState.loads.house - energyState.sources.solar);
+                energyState.battery.level = Math.max(0, energyState.battery.level - 0.2);
+            } else {
+                energyState.battery.charging = false;
+                energyState.sources.battery = 0;
+                energyState.loads.battery = 0;
+            }
+
+            updateDisplay();
+        }
+
+        // Controls
+        function toggleSimulation() {
+            energyState.isRunning = !energyState.isRunning;
+            const btn = event.target;
+            btn.textContent = energyState.isRunning ? '⏸ Pause' : '▶ Play';
+            btn.classList.toggle('active');
+        }
+
+        function setScenario(scenario) {
+            energyState.scenario = scenario;
+            document.querySelectorAll('.control-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+        }
+
+        function resetData() {
+            energyState = {
+                isRunning: true,
+                scenario: 'normal',
+                sources: { solar: 3.8, battery: 0.0, grid: 0.0 },
+                loads: { house: 2.1, charger: 2.3, battery: 0.0 },
+                battery: { level: 72, charging: false }
+            };
+            updateDisplay();
+        }
+
+        // Initialize and animate
+        window.addEventListener('load', initCanvas);
+        window.addEventListener('resize', initCanvas);
+        
+        setInterval(simulateEnergyFlow, 2000);
+        updateDisplay();
+    </script>
+</body>
+</html>

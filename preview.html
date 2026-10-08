@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EV Solar Charger - Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #081420;
+            color: #f4f9ff;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 480px;
+            margin: 0 auto;
+            background: #081420;
+        }
+
+        /* Header */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-top: 10px;
+        }
+
+        .header-text h1 {
+            font-size: 28px;
+            font-weight: 800;
+            color: #f4f9ff;
+            margin-bottom: 4px;
+        }
+
+        .header-text p {
+            font-size: 11px;
+            color: #8ec5ff;
+            text-transform: uppercase;
+            letter-spacing: 1.2px;
+            font-weight: 600;
+        }
+
+        .status-badge {
+            padding: 8px 12px;
+            border-radius: 20px;
+            border: 1.5px solid #1ac0a8;
+            background: #0d2a1f;
+            font-size: 11px;
+            font-weight: 700;
+            color: #ffffff;
+        }
+
+        .status-badge.offline {
+            border-color: #c01010;
+            background: #2a0d0d;
+        }
+
+        /* Status Message */
+        .status-message {
+            background: #0d1f2a;
+            border: 1px solid #1a3a52;
+            border-radius: 12px;
+            padding: 12px;
+            margin-bottom: 12px;
+            color: #7af5b7;
+            font-size: 12px;
+            font-weight: 600;
+            text-align: center;
+        }
+
+        /* Hero Card */
+        .hero-card {
+            background: linear-gradient(135deg, #0e2030 0%, #0a1420 100%);
+            border: 1px solid #1d4a6a;
+            border-radius: 24px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .hero-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .hero-label {
+            font-size: 12px;
+            color: #a9bfd0;
+            text-transform: uppercase;
+            letter-spacing: 1.1px;
+            font-weight: 600;
+        }
+
+        .hero-timestamp {
+            font-size: 11px;
+            color: #00d9ff;
+            font-weight: 700;
+        }
+
+        .hero-value {
+            font-size: 44px;
+            font-weight: 900;
+            color: #ffffff;
+            margin-bottom: 6px;
+        }
+
+        .hero-sub {
+            font-size: 14px;
+            color: #d8e5f0;
+            margin-bottom: 14px;
+        }
+
+        .progress-bar {
+            height: 8px;
+            background: #0a1a28;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 10px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: #1ac0a8;
+            border-radius: 4px;
+            width: 75%;
+            transition: width 0.3s ease;
+        }
+
+        .hero-footer {
+            font-size: 12px;
+            color: #7af5b7;
+            font-weight: 600;
+        }
+
+        /* Stats Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: #0d1b2a;
+            border: 1px solid #1a3a52;
+            border-radius: 16px;
+            padding: 14px;
+            text-align: center;
+        }
+
+        .stat-icon {
+            font-size: 28px;
+            margin-bottom: 6px;
+            display: block;
+        }
+
+        .stat-label {
+            font-size: 11px;
+            color: #9bafe5;
+            margin-bottom: 4px;
+        }
+
+        .stat-value {
+            font-size: 20px;
+            font-weight: 800;
+        }
+
+        .stat-value.solar { color: #ffbd59; }
+        .stat-value.house { color: #7c9cff; }
+        .stat-value.charge { color: #7af5b7; }
+        .stat-value.battery { color: #00e5ff; }
+
+        .stat-unit {
+            font-size: 12px;
+            opacity: 0.8;
+            font-weight: 600;
+        }
+
+        /* Section Title */
+        .section-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: #f4f9ff;
+            margin-bottom: 12px;
+            margin-top: 8px;
+        }
+
+        /* Charger Card */
+        .charger-card {
+            background: #0e2030;
+            border: 1px solid #1d4a6a;
+            border-radius: 20px;
+            padding: 18px;
+            margin-bottom: 20px;
+        }
+
+        .charger-status-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 16px;
+        }
+
+        .charger-label {
+            font-size: 12px;
+            color: #7fa5c7;
+            margin-bottom: 4px;
+        }
+
+        .charger-status {
+            font-size: 18px;
+            font-weight: 700;
+            color: #ffffff;
+        }
+
+        .charger-meter {
+            font-size: 32px;
+            font-weight: 900;
+            color: #00e5ff;
+        }
+
+        .charger-meter-label {
+            font-size: 11px;
+            color: #8ec5ff;
+            margin-top: 2px;
+        }
+
+        /* Power Info */
+        .power-info {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .power-box {
+            background: #0a1420;
+            border: 1px solid #1a2f42;
+            border-radius: 12px;
+            padding: 10px;
+            text-align: center;
+        }
+
+        .power-label {
+            font-size: 11px;
+            color: #7fa5c7;
+            margin-bottom: 4px;
+        }
+
+        .power-value {
+            font-size: 16px;
+            font-weight: 700;
+            color: #7af5b7;
+        }
+
+        /* Action Buttons */
+        .action-buttons {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 12px;
+        }
+
+        .btn {
+            padding: 14px 16px;
+            border-radius: 12px;
+            font-weight: 800;
+            font-size: 14px;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            color: #ffffff;
+        }
+
+        .btn-start {
+            background: #1ac0a8;
+        }
+
+        .btn-start:hover {
+            background: #15a896;
+            transform: translateY(-2px);
+        }
+
+        .btn-stop {
+            background: #c01010;
+        }
+
+        .btn-stop:hover {
+            background: #a80d0d;
+            transform: translateY(-2px);
+        }
+
+        .btn-refresh {
+            background: #0a1420;
+            border: 1px solid #1a3a52;
+            color: #7af5b7;
+        }
+
+        .btn-refresh:hover {
+            background: #0d1f2a;
+            border-color: #2a5a7a;
+        }
+
+        /* Summary Card */
+        .summary-card {
+            background: #0e2030;
+            border: 1px solid #1d4a6a;
+            border-radius: 16px;
+            padding: 16px;
+            margin-bottom: 20px;
+        }
+
+        .summary-row {
+            display: flex;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid #0a1420;
+        }
+
+        .summary-row:last-child {
+            border-bottom: none;
+        }
+
+        .summary-icon {
+            font-size: 22px;
+            margin-right: 12px;
+        }
+
+        .summary-label {
+            font-size: 12px;
+            color: #9bafe5;
+        }
+
+        .summary-value {
+            font-size: 16px;
+            font-weight: 700;
+            color: #ffffff;
+            margin-top: 2px;
+        }
+
+        /* Automation Rules */
+        .rules-card {
+            background: #0e2030;
+            border: 1px solid #1d4a6a;
+            border-radius: 16px;
+            padding: 16px;
+            margin-bottom: 20px;
+        }
+
+        .rule-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid #0a1420;
+        }
+
+        .rule-row:last-child {
+            border-bottom: none;
+        }
+
+        .rule-label {
+            font-size: 13px;
+            font-weight: 600;
+            color: #9bafe5;
+        }
+
+        .rule-value {
+            font-size: 12px;
+            color: #ffffff;
+            margin-top: 2px;
+        }
+
+        .rule-status {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: #0a1420;
+            border: 1px solid #1a2f42;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 14px;
+        }
+
+        .rule-status.active {
+            background: #0d2a1f;
+            border-color: #1ac0a8;
+            color: #7af5b7;
+        }
+
+        /* Chart Container */
+        .chart-container {
+            background: #0e2030;
+            border: 1px solid #1d4a6a;
+            border-radius: 16px;
+            padding: 16px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .chart-placeholder {
+            height: 200px;
+            background: linear-gradient(180deg, #0a1a28 0%, #081420 100%);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #7fa5c7;
+            font-size: 14px;
+        }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            padding: 20px 0;
+            border-top: 1px solid #0a1420;
+            margin-top: 20px;
+        }
+
+        .footer-text {
+            font-size: 12px;
+            color: #7fa5c7;
+        }
+
+        .footer-version {
+            font-size: 11px;
+            color: #4a6080;
+            margin-top: 4px;
+        }
+
+        /* Animations */
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+
+        @media (max-width: 480px) {
+            .container {
+                max-width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <div class="header-text">
+                <p>Smart Energy Management</p>
+                <h1>EV Solar Charger</h1>
+            </div>
+            <div class="status-badge">🟢 Online</div>
+        </div>
+
+        <!-- Status Message -->
+        <div class="status-message">
+            ✓ Connected • Live data
+        </div>
+
+        <!-- Hero Card -->
+        <div class="hero-card">
+            <div class="hero-header">
+                <div class="hero-label">Solar Balance</div>
+                <div class="hero-timestamp">Live</div>
+            </div>
+            <div class="hero-value">3.8 kW</div>
+            <div class="hero-sub">Surplus available (3.8 kW). Charge active.</div>
+            <div class="progress-bar">
+                <div class="progress-fill"></div>
+            </div>
+            <div class="hero-footer">✅ Optimal for charging</div>
+        </div>
+
+        <!-- Stats Grid -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <span class="stat-icon">☀️</span>
+                <div class="stat-label">Solar Power</div>
+                <div class="stat-value solar">3.8 <span class="stat-unit">kW</span></div>
+            </div>
+            <div class="stat-card">
+                <span class="stat-icon">🏠</span>
+                <div class="stat-label">House Load</div>
+                <div class="stat-value house">2.1 <span class="stat-unit">kW</span></div>
+            </div>
+            <div class="stat-card">
+                <span class="stat-icon">🔌</span>
+                <div class="stat-label">EV Charge</div>
+                <div class="stat-value charge">2.3 <span class="stat-unit">kW</span></div>
+            </div>
+            <div class="stat-card">
+                <span class="stat-icon">🔋</span>
+                <div class="stat-label">Battery Level</div>
+                <div class="stat-value battery">72 <span class="stat-unit">%</span></div>
+            </div>
+        </div>
+
+        <!-- Charge Control -->
+        <div class="section-title">Charge Control</div>
+        <div class="charger-card">
+            <div class="charger-status-row">
+                <div>
+                    <div class="charger-label">Current Status</div>
+                    <div class="charger-status">🟢 Charging</div>
+                </div>
+                <div style="text-align: right;">
+                    <div class="charger-meter">72%</div>
+                    <div class="charger-meter-label">of 80%</div>
+                </div>
+            </div>
+
+            <div class="power-info">
+                <div class="power-box">
+                    <div class="power-label">Power Draw</div>
+                    <div class="power-value">2.3 kW</div>
+                </div>
+                <div class="power-box">
+                    <div class="power-label">Status</div>
+                    <div class="power-value" style="color: #1ac0a8;">Connected</div>
+                </div>
+            </div>
+
+            <div class="action-buttons">
+                <button class="btn btn-stop">⏹ Stop Charge</button>
+                <button class="btn btn-refresh">🔄 Refresh</button>
+            </div>
+        </div>
+
+        <!-- Charge History -->
+        <div class="section-title">Charge History</div>
+        <div class="chart-container">
+            <div class="chart-placeholder">📊 Live Chart (LineChart)</div>
+        </div>
+
+        <!-- Battery Status -->
+        <div class="section-title">Battery Status</div>
+        <div class="chart-container">
+            <div class="chart-placeholder">◯ Battery Gauge (PieChart)</div>
+        </div>
+
+        <!-- Today's Summary -->
+        <div class="section-title">Today's Summary</div>
+        <div class="summary-card">
+            <div class="summary-row">
+                <span class="summary-icon">☀️</span>
+                <div style="flex: 1;">
+                    <div class="summary-label">Solar Generated</div>
+                    <div class="summary-value">18.6 kWh</div>
+                </div>
+            </div>
+            <div class="summary-row">
+                <span class="summary-icon">⚡</span>
+                <div style="flex: 1;">
+                    <div class="summary-label">EV Charged</div>
+                    <div class="summary-value">2.1 kWh</div>
+                </div>
+            </div>
+            <div class="summary-row">
+                <span class="summary-icon">📊</span>
+                <div style="flex: 1;">
+                    <div class="summary-label">Self-Consumption</div>
+                    <div class="summary-value">87.5%</div>
+                </div>
+            </div>
+            <div class="summary-row">
+                <span class="summary-icon">🌱</span>
+                <div style="flex: 1;">
+                    <div class="summary-label">CO₂ Saved</div>
+                    <div class="summary-value">4.2 kg</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Automation -->
+        <div class="section-title">Automation</div>
+        <div class="rules-card">
+            <div class="rule-row">
+                <div style="flex: 1;">
+                    <div class="rule-label">Auto Charging</div>
+                    <div class="rule-value">Enabled</div>
+                </div>
+                <div class="rule-status active">✓</div>
+            </div>
+            <div class="rule-row">
+                <div style="flex: 1;">
+                    <div class="rule-label">Min Surplus</div>
+                    <div class="rule-value">0.5 kW</div>
+                </div>
+                <div class="rule-status active">✓</div>
+            </div>
+            <div class="rule-row">
+                <div style="flex: 1;">
+                    <div class="rule-label">Target Level</div>
+                    <div class="rule-value">80%</div>
+                </div>
+                <div class="rule-status active">✓</div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            <div class="footer-text">Last update: Just now</div>
+            <div class="footer-version">v1.0.0 • Backend: ✓</div>
+        </div>
+    </div>
+</body>
+</html>

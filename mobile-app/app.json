@@ -1,0 +1,21 @@
+{
+  "expo": {
+    "name": "EV Solar Charger",
+    "slug": "ev-solar-charger",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "backgroundColor": "#081420"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "android": {
+      "package": "com.evsolarcharger.app",
+      "adaptiveIcon": {
+        "backgroundColor": "#081420"
+      }
+    }
+  },
+  "name": "EV Solar Charger",
+  "displayName": "EV Solar Charger"
+}

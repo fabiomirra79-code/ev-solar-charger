@@ -1,0 +1,1001 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EV Solar Charger — Energy Routing Dashboard</title>
+  <style>
+    :root {
+      --primary: #1ac0a8;
+      --primary-dark: #158a7f;
+      --primary-light: #a9f7df;
+      --bg-depth-0: #050d15;
+      --bg-depth-1: #081420;
+      --bg-depth-2: #0f1f2e;
+      --bg-depth-3: #192940;
+      --text-primary: #f3f7ff;
+      --text-secondary: #a9bfd0;
+      --text-tertiary: #7fa5c7;
+      --solar: #ffc947;
+      --house: #7c9cff;
+      --charger: #6af5b5;
+      --battery: #00d9ff;
+      --grid: #ff6b6b;
+      --grid-export: #ff8787;
+      --accent-glow: rgba(26, 192, 168, 0.25);
+      --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.2);
+      --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.32);
+      --shadow-lg: 0 20px 60px rgba(0, 0, 0, 0.45);
+    }
+
+    * { box-sizing: border-box; }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: linear-gradient(135deg, var(--bg-depth-0) 0%, var(--bg-depth-1) 40%, var(--bg-depth-0) 100%);
+      color: var(--text-primary);
+      font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, sans-serif;
+      letter-spacing: 0.01em;
+      line-height: 1.6;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 1320px;
+      margin: 0 auto;
+    }
+
+    /* Header */
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 36px;
+      padding: 28px 32px;
+      background: linear-gradient(135deg, rgba(15, 31, 46, 0.6), rgba(25, 41, 64, 0.4));
+      border: 1px solid rgba(26, 192, 168, 0.15);
+      border-radius: 24px;
+      backdrop-filter: blur(10px);
+      box-shadow: var(--shadow-md), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    }
+
+    .header-content h1 {
+      margin: 0 0 4px;
+      font-size: clamp(24px, 3vw, 36px);
+      font-weight: 900;
+      letter-spacing: -0.02em;
+      background: linear-gradient(135deg, var(--text-primary), var(--primary-light));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .header-content p {
+      margin: 0;
+      font-size: 13px;
+      color: var(--text-tertiary);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      font-weight: 600;
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 9px;
+      padding: 10px 16px;
+      background: linear-gradient(135deg, rgba(10, 42, 31, 0.8), rgba(8, 30, 25, 0.95));
+      border: 1px solid rgba(106, 245, 181, 0.5);
+      border-radius: 12px;
+      font-weight: 700;
+      font-size: 12px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--charger);
+      box-shadow: 0 0 20px rgba(106, 245, 181, 0.2);
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--charger);
+      box-shadow: 0 0 12px rgba(106, 245, 181, 0.8);
+      animation: pulse-dot 2s infinite;
+    }
+
+    @keyframes pulse-dot {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(0.8); }
+    }
+
+    /* Main diagram panel */
+    .diagram-panel {
+      background: linear-gradient(135deg, rgba(15, 31, 46, 0.5), rgba(25, 41, 64, 0.3));
+      border: 1px solid rgba(26, 192, 168, 0.12);
+      border-radius: 28px;
+      backdrop-filter: blur(12px);
+      padding: 32px;
+      margin-bottom: 32px;
+      box-shadow: var(--shadow-lg), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    }
+
+    .diagram-title {
+      margin: 0 0 24px;
+      font-size: 14px;
+      font-weight: 800;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--text-secondary);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .diagram-status {
+      font-size: 12px;
+      color: var(--primary);
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    /* Energy flow canvas */
+    .canvas-container {
+      position: relative;
+      width: 100%;
+      height: 580px;
+      background: radial-gradient(circle at 50% 50%, rgba(26, 192, 168, 0.05), transparent 70%);
+      border: 1px solid rgba(26, 192, 168, 0.08);
+      border-radius: 20px;
+      margin-bottom: 28px;
+      overflow: hidden;
+    }
+
+    .canvas-container svg {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 1;
+      filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.3));
+    }
+
+    .device-node {
+      position: absolute;
+      width: 140px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      z-index: 2;
+      transform: translate(-50%, -50%);
+      transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    .device-core {
+      position: relative;
+      width: 110px;
+      height: 110px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 48px;
+      background: linear-gradient(135deg, rgba(20, 42, 64, 0.8), rgba(10, 22, 36, 0.95));
+      border: 2px solid rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(8px);
+      box-shadow: 0 0 1px rgba(255, 255, 255, 0.1), 0 8px 32px rgba(0, 0, 0, 0.3);
+      transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    .device-core::before {
+      content: "";
+      position: absolute;
+      inset: -12px;
+      border: 2px solid transparent;
+      border-radius: 50%;
+      animation: outer-ring 3s infinite ease-out;
+    }
+
+    @keyframes outer-ring {
+      0% { transform: scale(0.85); opacity: 1; border-color: inherit; }
+      100% { transform: scale(1.4); opacity: 0; border-color: transparent; }
+    }
+
+    .device-core::after {
+      content: "";
+      position: absolute;
+      inset: -16px;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 50%;
+      animation: spin-slow 20s linear infinite reverse;
+    }
+
+    @keyframes spin-slow {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .device-node[data-device="solar"] .device-core {
+      border-color: rgba(255, 201, 71, 0.8);
+      box-shadow: 0 0 28px rgba(255, 201, 71, 0.3), 0 8px 32px rgba(0, 0, 0, 0.3);
+    }
+
+    .device-node[data-device="house"] .device-core {
+      border-color: rgba(124, 156, 255, 0.8);
+      box-shadow: 0 0 28px rgba(124, 156, 255, 0.3), 0 8px 32px rgba(0, 0, 0, 0.3);
+    }
+
+    .device-node[data-device="charger"] .device-core {
+      border-color: rgba(106, 245, 181, 0.8);
+      box-shadow: 0 0 28px rgba(106, 245, 181, 0.3), 0 8px 32px rgba(0, 0, 0, 0.3);
+    }
+
+    .device-node[data-device="battery"] .device-core {
+      border-color: rgba(0, 217, 255, 0.8);
+      box-shadow: 0 0 28px rgba(0, 217, 255, 0.3), 0 8px 32px rgba(0, 0, 0, 0.3);
+    }
+
+    .device-node[data-device="grid"] .device-core {
+      border-color: rgba(255, 107, 107, 0.8);
+      box-shadow: 0 0 28px rgba(255, 107, 107, 0.3), 0 8px 32px rgba(0, 0, 0, 0.3);
+    }
+
+    .device-node.active .device-core {
+      transform: scale(1.12);
+      border-color: var(--primary);
+      box-shadow: 0 0 40px rgba(26, 192, 168, 0.6), 0 12px 40px rgba(0, 0, 0, 0.4);
+    }
+
+    .device-label {
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-secondary);
+      text-align: center;
+      line-height: 1.3;
+    }
+
+    .device-value {
+      font-size: 16px;
+      font-weight: 900;
+      letter-spacing: -0.02em;
+      text-align: center;
+    }
+
+    .device-node[data-device="solar"] .device-value { color: var(--solar); }
+    .device-node[data-device="house"] .device-value { color: var(--house); }
+    .device-node[data-device="charger"] .device-value { color: var(--charger); }
+    .device-node[data-device="battery"] .device-value { color: var(--battery); }
+    .device-node[data-device="grid"] .device-value { color: var(--grid); }
+
+    /* Flow paths */
+    .flow-path {
+      fill: none;
+      stroke-width: 3.5;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      opacity: 0.85;
+      filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.4));
+      animation: flow-animate 2s linear infinite;
+    }
+
+    @keyframes flow-animate {
+      0% { stroke-dashoffset: 0; }
+      100% { stroke-dashoffset: -24; }
+    }
+
+    .flow-particle {
+      fill: rgba(255, 255, 255, 0.9);
+      filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.6));
+    }
+
+    /* Legend */
+    .legend {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 14px;
+      margin-bottom: 28px;
+    }
+
+    .legend-card {
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+      padding: 16px 18px;
+      background: rgba(10, 20, 32, 0.5);
+      border: 1px solid rgba(26, 192, 168, 0.1);
+      border-radius: 14px;
+      backdrop-filter: blur(6px);
+      transition: all 0.3s ease;
+    }
+
+    .legend-card:hover {
+      border-color: rgba(26, 192, 168, 0.3);
+      background: rgba(10, 20, 32, 0.7);
+      transform: translateY(-2px);
+    }
+
+    .legend-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      flex-shrink: 0;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .legend-content { flex: 1; }
+
+    .legend-label {
+      font-size: 10px;
+      letter-spacing: 0.1em;
+      color: var(--text-tertiary);
+      text-transform: uppercase;
+      font-weight: 700;
+      margin-bottom: 5px;
+    }
+
+    .legend-power {
+      font-size: 18px;
+      font-weight: 900;
+      letter-spacing: -0.02em;
+      margin-bottom: 3px;
+    }
+
+    .legend-status {
+      font-size: 9px;
+      color: var(--text-tertiary);
+      font-weight: 600;
+    }
+
+    .legend-card[data-flow="solar-to-house"] .legend-power { color: var(--solar); }
+    .legend-card[data-flow="solar-to-charger"] .legend-power { color: var(--charger); }
+    .legend-card[data-flow="solar-to-battery"] .legend-power { color: var(--battery); }
+    .legend-card[data-flow="solar-to-grid"] .legend-power { color: var(--grid-export); }
+    .legend-card[data-flow="battery-to-house"] .legend-power { color: var(--battery); }
+    .legend-card[data-flow="grid-to-house"] .legend-power { color: var(--grid); }
+
+    /* Stats grid */
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+
+    .stat-card {
+      padding: 20px 22px;
+      background: linear-gradient(135deg, rgba(15, 31, 46, 0.5), rgba(25, 41, 64, 0.3));
+      border: 1px solid rgba(26, 192, 168, 0.12);
+      border-radius: 16px;
+      backdrop-filter: blur(8px);
+      transition: all 0.3s ease;
+      box-shadow: var(--shadow-md);
+    }
+
+    .stat-card:hover {
+      border-color: rgba(26, 192, 168, 0.25);
+      background: linear-gradient(135deg, rgba(15, 31, 46, 0.7), rgba(25, 41, 64, 0.5));
+      transform: translateY(-4px);
+    }
+
+    .stat-label {
+      font-size: 10px;
+      letter-spacing: 0.12em;
+      color: var(--text-tertiary);
+      text-transform: uppercase;
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+
+    .stat-value {
+      font-size: 32px;
+      font-weight: 900;
+      letter-spacing: -0.03em;
+      margin-bottom: 6px;
+    }
+
+    .stat-sub {
+      font-size: 11px;
+      color: var(--text-tertiary);
+      font-weight: 600;
+    }
+
+    .stat-card[data-stat="solar"] .stat-value { color: var(--solar); }
+    .stat-card[data-stat="house"] .stat-value { color: var(--house); }
+    .stat-card[data-stat="charger"] .stat-value { color: var(--charger); }
+    .stat-card[data-stat="battery"] .stat-value { color: var(--battery); }
+
+    /* Details grid */
+    .details {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+
+    .detail-panel {
+      padding: 20px 22px;
+      background: rgba(10, 20, 32, 0.5);
+      border: 1px solid rgba(26, 192, 168, 0.1);
+      border-radius: 16px;
+      backdrop-filter: blur(8px);
+      box-shadow: var(--shadow-md);
+    }
+
+    .detail-panel h3 {
+      margin: 0 0 16px;
+      font-size: 11px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      font-weight: 800;
+      color: var(--text-secondary);
+    }
+
+    .flow-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 11px 12px;
+      margin-bottom: 8px;
+      border-radius: 9px;
+      background: rgba(26, 192, 168, 0.05);
+      border-left: 3px solid var(--primary);
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text-primary);
+      transition: all 0.3s ease;
+    }
+
+    .flow-item:last-child {
+      margin-bottom: 0;
+    }
+
+    .flow-item.inactive {
+      opacity: 0.35;
+      border-left-color: rgba(255, 255, 255, 0.1);
+      background: rgba(100, 100, 100, 0.05);
+    }
+
+    .flow-item .label {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .flow-item .arrow {
+      font-size: 14px;
+      animation: arrow-bounce 1.2s ease-in-out infinite;
+    }
+
+    @keyframes arrow-bounce {
+      0%, 100% { transform: translateX(0); }
+      50% { transform: translateX(6px); }
+    }
+
+    .flow-item.inactive .arrow {
+      animation: none;
+      opacity: 0.2;
+    }
+
+    .flow-item .value {
+      font-weight: 900;
+      letter-spacing: -0.02em;
+    }
+
+    .flow-item[data-type="solar"] .value { color: var(--solar); }
+    .flow-item[data-type="house"] .value { color: var(--house); }
+    .flow-item[data-type="charger"] .value { color: var(--charger); }
+    .flow-item[data-type="battery"] .value { color: var(--battery); }
+    .flow-item[data-type="grid"] .value { color: var(--grid); }
+
+    /* Controls */
+    .controls {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 32px;
+    }
+
+    .btn {
+      padding: 11px 16px;
+      border: 1px solid rgba(26, 192, 168, 0.25);
+      background: rgba(10, 20, 32, 0.6);
+      color: var(--primary-light);
+      border-radius: 10px;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+      backdrop-filter: blur(6px);
+    }
+
+    .btn:hover {
+      border-color: var(--primary);
+      background: rgba(26, 192, 168, 0.08);
+      transform: translateY(-2px);
+      box-shadow: 0 0 16px rgba(26, 192, 168, 0.2);
+    }
+
+    .btn.primary {
+      background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+      border-color: var(--primary);
+      color: var(--bg-depth-0);
+      font-weight: 800;
+      box-shadow: 0 0 20px rgba(26, 192, 168, 0.3);
+    }
+
+    .btn.primary:hover {
+      box-shadow: 0 0 32px rgba(26, 192, 168, 0.5);
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      body {
+        padding: 12px;
+      }
+
+      .header {
+        flex-direction: column;
+        gap: 16px;
+        text-align: center;
+        align-items: flex-start;
+      }
+
+      .diagram-panel {
+        padding: 20px;
+      }
+
+      .canvas-container {
+        height: 620px;
+      }
+
+      .device-node {
+        width: 120px;
+      }
+
+      .device-core {
+        width: 90px;
+        height: 90px;
+        font-size: 36px;
+      }
+
+      .device-label {
+        font-size: 10px;
+      }
+
+      .device-value {
+        font-size: 13px;
+      }
+
+      .legend {
+        grid-template-columns: 1fr;
+      }
+
+      .stats {
+        grid-template-columns: 1fr;
+      }
+
+      .details {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <div class="header">
+      <div class="header-content">
+        <h1>⚡ Energy Routing</h1>
+        <p>Real-time power distribution analysis</p>
+      </div>
+      <div class="status-badge">
+        <div class="status-dot"></div>
+        <span>Live Monitoring</span>
+      </div>
+    </div>
+
+    <!-- Main diagram -->
+    <div class="diagram-panel">
+      <div class="diagram-title">
+        <span>Current Energy Flow</span>
+        <div class="diagram-status" id="flowStatus">Solar-powered delivery</div>
+      </div>
+
+      <div class="canvas-container">
+        <svg id="flowSvg"></svg>
+
+        <!-- Device nodes -->
+        <div class="device-node active" data-device="solar" style="left: 12%; top: 45%;">
+          <div class="device-core">☀️</div>
+          <div class="device-label">Solar Panel</div>
+          <div class="device-value" id="val-solar">3.8 kW</div>
+        </div>
+
+        <div class="device-node" data-device="house" style="left: 30%; top: 20%;">
+          <div class="device-core">🏠</div>
+          <div class="device-label">House</div>
+          <div class="device-value" id="val-house">2.1 kW</div>
+        </div>
+
+        <div class="device-node active" data-device="charger" style="left: 54%; top: 55%;">
+          <div class="device-core">🔌</div>
+          <div class="device-label">EV Charger</div>
+          <div class="device-value" id="val-charger">2.3 kW</div>
+        </div>
+
+        <div class="device-node" data-device="battery" style="left: 73%; top: 77%;">
+          <div class="device-core">🔋</div>
+          <div class="device-label">Battery</div>
+          <div class="device-value" id="val-battery">72%</div>
+        </div>
+
+        <div class="device-node" data-device="grid" style="left: 88%; top: 45%;">
+          <div class="device-core">🌍</div>
+          <div class="device-label">Grid</div>
+          <div class="device-value" id="val-grid">0.5 kW</div>
+        </div>
+      </div>
+
+      <!-- Legend -->
+      <div class="legend">
+        <div class="legend-card" data-flow="solar-to-house">
+          <div class="legend-icon">☀️→🏠</div>
+          <div class="legend-content">
+            <div class="legend-label">Solar to House</div>
+            <div class="legend-power" id="leg-s2h">2.1 kW</div>
+            <div class="legend-status">Primary source</div>
+          </div>
+        </div>
+
+        <div class="legend-card" data-flow="solar-to-charger">
+          <div class="legend-icon">☀️→🔌</div>
+          <div class="legend-content">
+            <div class="legend-label">Solar to EV Charger</div>
+            <div class="legend-power" id="leg-s2c">2.3 kW</div>
+            <div class="legend-status">Active charging</div>
+          </div>
+        </div>
+
+        <div class="legend-card" data-flow="solar-to-battery">
+          <div class="legend-icon">☀️→🔋</div>
+          <div class="legend-content">
+            <div class="legend-label">Solar to Battery</div>
+            <div class="legend-power" id="leg-s2b">0.0 kW</div>
+            <div class="legend-status">Idle (surplus only)</div>
+          </div>
+        </div>
+
+        <div class="legend-card" data-flow="solar-to-grid">
+          <div class="legend-icon">☀️→🌍</div>
+          <div class="legend-content">
+            <div class="legend-label">Solar to Grid</div>
+            <div class="legend-power" id="leg-s2g">0.5 kW</div>
+            <div class="legend-status">Excess export</div>
+          </div>
+        </div>
+
+        <div class="legend-card" data-flow="battery-to-house">
+          <div class="legend-icon">🔋→🏠</div>
+          <div class="legend-content">
+            <div class="legend-label">Battery to House</div>
+            <div class="legend-power" id="leg-b2h">0.0 kW</div>
+            <div class="legend-status">Standby</div>
+          </div>
+        </div>
+
+        <div class="legend-card" data-flow="grid-to-house">
+          <div class="legend-icon">🌍→🏠</div>
+          <div class="legend-content">
+            <div class="legend-label">Grid to House</div>
+            <div class="legend-power" id="leg-g2h">0.0 kW</div>
+            <div class="legend-status">Backup only</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Statistics -->
+    <div class="stats">
+      <div class="stat-card" data-stat="solar">
+        <div class="stat-label">Generation</div>
+        <div class="stat-value" id="stat-gen">3.8 kW</div>
+        <div class="stat-sub">From solar array</div>
+      </div>
+
+      <div class="stat-card" data-stat="house">
+        <div class="stat-label">House Load</div>
+        <div class="stat-value" id="stat-house">2.1 kW</div>
+        <div class="stat-sub">Domestic demand</div>
+      </div>
+
+      <div class="stat-card" data-stat="charger">
+        <div class="stat-label">EV Charging</div>
+        <div class="stat-value" id="stat-ev">2.3 kW</div>
+        <div class="stat-sub">Battery replenish</div>
+      </div>
+
+      <div class="stat-card" data-stat="battery">
+        <div class="stat-label">Battery Storage</div>
+        <div class="stat-value" id="stat-bat">72%</div>
+        <div class="stat-sub">Energy reserve</div>
+      </div>
+    </div>
+
+    <!-- Details panels -->
+    <div class="details">
+      <div class="detail-panel">
+        <h3>🟢 Sources</h3>
+        <div class="flow-item" data-type="solar">
+          <div class="label"><span class="arrow">→</span> Solar Generation</div>
+          <div class="value" id="src-solar">3.8 kW</div>
+        </div>
+        <div class="flow-item inactive" data-type="battery">
+          <div class="label"><span class="arrow">→</span> Battery Discharge</div>
+          <div class="value" id="src-bat">0.0 kW</div>
+        </div>
+        <div class="flow-item inactive" data-type="grid">
+          <div class="label"><span class="arrow">→</span> Grid Import</div>
+          <div class="value" id="src-grid">0.0 kW</div>
+        </div>
+      </div>
+
+      <div class="detail-panel">
+        <h3>🔴 Consumers</h3>
+        <div class="flow-item" data-type="house">
+          <div class="label"><span class="arrow">→</span> House</div>
+          <div class="value" id="cons-house">2.1 kW</div>
+        </div>
+        <div class="flow-item" data-type="charger">
+          <div class="label"><span class="arrow">→</span> EV Charger</div>
+          <div class="value" id="cons-ev">2.3 kW</div>
+        </div>
+        <div class="flow-item inactive" data-type="battery">
+          <div class="label"><span class="arrow">→</span> Battery Storage</div>
+          <div class="value" id="cons-bat">0.0 kW</div>
+        </div>
+      </div>
+
+      <div class="detail-panel">
+        <h3>📊 Efficiency</h3>
+        <div class="flow-item" data-type="charger">
+          <div class="label"><span class="arrow">✓</span> Self Consumption</div>
+          <div class="value" id="eff-self">87.5%</div>
+        </div>
+        <div class="flow-item" data-type="grid">
+          <div class="label"><span class="arrow">✓</span> Export to Grid</div>
+          <div class="value" id="eff-exp">0.5 kW</div>
+        </div>
+        <div class="flow-item" data-type="battery">
+          <div class="label"><span class="arrow">✓</span> Battery Level</div>
+          <div class="value" id="eff-bat">72%</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Controls -->
+    <div class="controls">
+      <button class="btn primary" id="toggleBtn" onclick="toggleSimulation()">⏸ Pause</button>
+      <button class="btn" onclick="setMode('sunny')">☀️ Sunny</button>
+      <button class="btn" onclick="setMode('cloudy')">☁️ Cloudy</button>
+      <button class="btn" onclick="setMode('evening')">🌅 Evening</button>
+      <button class="btn" onclick="setMode('night')">🌙 Night</button>
+      <button class="btn" onclick="resetData()">🔄 Reset</button>
+    </div>
+  </div>
+
+  <script>
+    const svg = document.getElementById('flowSvg');
+    let isRunning = true;
+    let currentMode = 'normal';
+
+    const modes = {
+      sunny: { solar: 4.2, house: 2.1, ev: 2.5, batt: 75 },
+      cloudy: { solar: 2.1, house: 2.0, ev: 1.0, batt: 68 },
+      evening: { solar: 0.9, house: 2.3, ev: 0.5, batt: 62 },
+      night: { solar: 0, house: 2.2, ev: 0, batt: 55 },
+      normal: { solar: 3.8, house: 2.1, ev: 2.3, batt: 72 }
+    };
+
+    let data = { ...modes.normal };
+
+    function renderFlowChart() {
+      svg.innerHTML = '';
+
+      const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+      const filter = document.createElementNS('http://www.w3.org/2000/svg', 'filter');
+      filter.setAttribute('id', 'glow');
+      filter.innerHTML = `<feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+        <feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge>`;
+      defs.appendChild(filter);
+      svg.appendChild(defs);
+
+      const paths = [];
+
+      // Solar → House
+      if (data.house > 0) {
+        paths.push({
+          from: { x: 100, y: 270 },
+          to: { x: 320, y: 100 },
+          color: data.solar > 0 ? '#ffc947' : '#666',
+          active: data.solar > 0,
+          label: 's2h'
+        });
+      }
+
+      // Solar → EV
+      if (data.ev > 0 && data.solar > 0) {
+        paths.push({
+          from: { x: 100, y: 270 },
+          to: { x: 580, y: 310 },
+          color: '#6af5b5',
+          active: true,
+          label: 's2e'
+        });
+      }
+
+      // Solar → Grid (surplus)
+      const surplus = Math.max(0, data.solar - data.house - data.ev);
+      if (surplus > 0.3) {
+        paths.push({
+          from: { x: 100, y: 270 },
+          to: { x: 920, y: 270 },
+          color: '#ff8787',
+          active: true,
+          label: 's2g'
+        });
+      }
+
+      paths.forEach((link) => {
+        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        const mid = {
+          x: (link.from.x + link.to.x) / 2,
+          y: (link.from.y + link.to.y) / 2 - 70
+        };
+        const d = `M ${link.from.x} ${link.from.y} Q ${mid.x} ${mid.y} ${link.to.x} ${link.to.y}`;
+        path.setAttribute('d', d);
+        path.setAttribute('stroke', link.color);
+        path.setAttribute('stroke-width', '3.5');
+        path.setAttribute('stroke-dasharray', '12 8');
+        path.setAttribute('fill', 'none');
+        path.setAttribute('stroke-linecap', 'round');
+        path.setAttribute('stroke-linejoin', 'round');
+        path.setAttribute('class', 'flow-path');
+        if (link.active) {
+          path.setAttribute('opacity', '0.9');
+        } else {
+          path.setAttribute('opacity', '0.3');
+        }
+        svg.appendChild(path);
+      });
+
+      // Animated particles
+      paths.forEach((link) => {
+        if (!link.active) return;
+        for (let i = 0; i < 4; i++) {
+          const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+          circle.setAttribute('r', '5.5');
+          circle.setAttribute('fill', link.color);
+          circle.setAttribute('class', 'flow-particle');
+          svg.appendChild(circle);
+
+          const animate = () => {
+            if (!isRunning) return;
+            const offset = ((Date.now() / 1800 + i * 0.25) % 1);
+            const fromX = link.from.x;
+            const fromY = link.from.y;
+            const toX = link.to.x;
+            const toY = link.to.y;
+            const midX = (fromX + toX) / 2;
+            const midY = (fromY + toY) / 2 - 70;
+
+            const x = Math.pow(1 - offset, 2) * fromX + 2 * (1 - offset) * offset * midX + Math.pow(offset, 2) * toX;
+            const y = Math.pow(1 - offset, 2) * fromY + 2 * (1 - offset) * offset * midY + Math.pow(offset, 2) * toY;
+
+            circle.setAttribute('cx', x);
+            circle.setAttribute('cy', y);
+            requestAnimationFrame(animate);
+          };
+          requestAnimationFrame(animate);
+        }
+      });
+    }
+
+    function updateUI() {
+      const s2h = Math.min(data.solar, data.house);
+      const s2e = Math.max(0, Math.min(data.solar - data.house, data.ev));
+      const s2b = Math.max(0, data.solar - data.house - data.ev);
+      const s2g = s2b;
+
+      // Values
+      document.getElementById('val-solar').textContent = data.solar.toFixed(1) + ' kW';
+      document.getElementById('val-house').textContent = data.house.toFixed(1) + ' kW';
+      document.getElementById('val-charger').textContent = data.ev.toFixed(1) + ' kW';
+      document.getElementById('val-battery').textContent = data.batt.toFixed(0) + '%';
+      document.getElementById('val-grid').textContent = s2g.toFixed(1) + ' kW';
+
+      // Legend
+      document.getElementById('leg-s2h').textContent = s2h.toFixed(1) + ' kW';
+      document.getElementById('leg-s2c').textContent = s2e.toFixed(1) + ' kW';
+      document.getElementById('leg-s2b').textContent = s2b.toFixed(1) + ' kW';
+      document.getElementById('leg-s2g').textContent = s2g.toFixed(1) + ' kW';
+
+      // Stats
+      document.getElementById('stat-gen').textContent = data.solar.toFixed(1) + ' kW';
+      document.getElementById('stat-house').textContent = data.house.toFixed(1) + ' kW';
+      document.getElementById('stat-ev').textContent = data.ev.toFixed(1) + ' kW';
+      document.getElementById('stat-bat').textContent = data.batt.toFixed(0) + '%';
+
+      // Sources & Consumers
+      document.getElementById('src-solar').textContent = data.solar.toFixed(1) + ' kW';
+      document.getElementById('cons-house').textContent = data.house.toFixed(1) + ' kW';
+      document.getElementById('cons-ev').textContent = data.ev.toFixed(1) + ' kW';
+
+      // Efficiency
+      const totalDemand = data.house + data.ev;
+      const selfConsume = totalDemand > 0 ? (Math.min(data.solar, totalDemand) / totalDemand * 100) : 0;
+      document.getElementById('eff-self').textContent = selfConsume.toFixed(1) + '%';
+      document.getElementById('eff-exp').textContent = s2g.toFixed(1) + ' kW';
+      document.getElementById('eff-bat').textContent = data.batt.toFixed(0) + '%';
+
+      // Status
+      if (data.solar > data.house + data.ev) {
+        document.getElementById('flowStatus').textContent = 'Solar surplus routing';
+      } else if (data.ev > 0) {
+        document.getElementById('flowStatus').textContent = 'Solar-powered delivery';
+      } else {
+        document.getElementById('flowStatus').textContent = 'Balanced supply';
+      }
+
+      renderFlowChart();
+    }
+
+    function toggleSimulation() {
+      isRunning = !isRunning;
+      const btn = document.getElementById('toggleBtn');
+      btn.textContent = isRunning ? '⏸ Pause' : '▶ Play';
+    }
+
+    function setMode(mode) {
+      currentMode = mode;
+      data = { ...modes[mode] };
+      updateUI();
+    }
+
+    function resetData() {
+      setMode('normal');
+    }
+
+    function simulate() {
+      if (!isRunning) return;
+
+      const m = modes[currentMode];
+      data.solar = m.solar + (Math.random() - 0.5) * 0.4;
+      data.solar = Math.max(0, Math.min(5.5, data.solar));
+      data.house = 2.0 + (Math.random() - 0.5) * 0.3;
+      data.ev = Math.max(0, data.solar - data.house * 0.6);
+      data.batt = Math.min(100, Math.max(45, data.batt + (Math.random() - 0.5) * 0.5));
+
+      updateUI();
+    }
+
+    updateUI();
+    setInterval(simulate, 2000);
+  </script>
+</body>
+</html>
